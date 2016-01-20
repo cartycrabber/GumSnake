@@ -38,16 +38,16 @@ public class SnakeHead : MonoBehaviour {
 			deltaCycleTime += Time.deltaTime;
 		}
 
-		if (Input.GetKeyDown (KeyCode.UpArrow)) {
+		if ((Input.GetKeyDown (KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) && (movementDirection != Direction.DOWN)) {
 			movementDirection = Direction.UP;
 		}
-		if (Input.GetKeyDown (KeyCode.DownArrow)) {
+		if ((Input.GetKeyDown (KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S)) && (movementDirection != Direction.UP)) {
 			movementDirection = Direction.DOWN;
 		}
-		if (Input.GetKeyDown (KeyCode.LeftArrow)) {
+		if ((Input.GetKeyDown (KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) && (movementDirection != Direction.RIGHT)) {
 			movementDirection = Direction.LEFT;
 		}
-		if (Input.GetKeyDown (KeyCode.RightArrow)) {
+		if ((Input.GetKeyDown (KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) && (movementDirection != Direction.LEFT)) {
 			movementDirection = Direction.RIGHT;
 		}
 

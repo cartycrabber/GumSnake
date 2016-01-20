@@ -15,6 +15,13 @@ public class GameManager : MonoBehaviour {
 	private const float cooldownPeriod = 5;//In Seconds
 	#endregion
 
+    private enum GameOverReason
+    {
+        HIT_WALL,
+        HIT_SNAKE,
+        INCORRECT_ANSWER
+    };
+
 	public GameObject snakeHeadPrefab;
 	public GameObject snakeBodyPrefab;
 
@@ -26,7 +33,7 @@ public class GameManager : MonoBehaviour {
 
 	public GameObject questionText;
 	public GameObject scoreText;
-	public GameObject wrongText;
+	public GameObject gameOverText;
 
 	private GameObject currentSnakeHead;
 	private List<GameObject> currentSnakeBodies;
@@ -35,7 +42,8 @@ public class GameManager : MonoBehaviour {
 
 	private GameObject answerObject;
 
-	float cooldown;
+	private bool gameOver;
+    private bool gameStarting = false;
 
 	// Use this for initialization
 	void Start () {
@@ -45,30 +53,31 @@ public class GameManager : MonoBehaviour {
 		SpawnItem ();
 		PickSentence ();
 		SpawnItem (answerObject);
-		cooldown = 0;
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		bool cooling = false;
-		if(cooldown > 0)
+        if (gameStarting)
+        {
+            CreateSnake(initialSnakeSize);
+            PickSentence();
+            SpawnItem();
+            SpawnItem(answerObject);
+            gameStarting = false;
+        }
+        if (gameOver && (Input.GetKeyDown(KeyCode.Return)))
 		{
-			cooldown -= Time.deltaTime;
-		}
-		if((cooldown <= 0) && (currentSnakeHead == null))
-		{
-			wrongText.GetComponent<Text> ().enabled = false;
-			CreateSnake(initialSnakeSize);
+            DestroySnake();
+			gameOverText.GetComponent<Text> ().enabled = false;
 			scoreText.GetComponent<Text> ().text = "Score: 0";
 			foreach(GameObject item in spawnedItems)
 			{
 				Destroy (item);
 			}
 			spawnedItems.Clear ();
-			PickSentence ();
-			SpawnItem ();
-			SpawnItem (answerObject);
-		}
+            gameStarting = true;
+            gameOver = false;
+        }
 	}
 
 	void CreateSnake (int length) {
@@ -80,10 +89,14 @@ public class GameManager : MonoBehaviour {
 			if(x == 0)
 			{
 				GameObject.Find (newObj.name).GetComponent<SnakeBody> ().leader = GameObject.Find ("SnakeHead");
-			}
+            }
 			else {
 				GameObject.Find (newObj.name).GetComponent<SnakeBody> ().leader = GameObject.Find ("SnakeBody" + (x - 1));
 			}
+            if(GameObject.Find(newObj.name).GetComponent<SnakeBody>().leader == null)
+            {
+                Debug.LogError("No leader assigned to " + newObj.name);
+            }
 			currentSnakeBodies.Add ((GameObject)newObj);
 		}
 		currentSnakeHead.GetComponent<SnakeHead> ().cycling = true;
@@ -93,11 +106,7 @@ public class GameManager : MonoBehaviour {
 		if(currentSnakeHead.transform.position.x > rightBorder || currentSnakeHead.transform.position.x < leftBorder ||
 			currentSnakeHead.transform.position.y > topBorder || currentSnakeHead.transform.position.y < bottomBorder)
 		{
-			Debug.Log ("You went out of the border");
-			DestroySnake ();
-			wrongText.GetComponent<Text> ().text = "You Died!\nGame Over\nCorrect Answer: " + answerObject.name;
-			wrongText.GetComponent<Text> ().enabled = true;
-			cooldown = cooldownPeriod;
+            GameOver(GameOverReason.HIT_WALL);
 			return;
 		}
 		else
@@ -105,12 +114,8 @@ public class GameManager : MonoBehaviour {
 			foreach(GameObject body in currentSnakeBodies) {
 				if(body.transform.position == currentSnakeHead.transform.position)
 				{
-					Debug.Log("You Died");
-					DestroySnake ();
-					wrongText.GetComponent<Text> ().text = "You Died!\nGame Over\nCorrect Answer: " + answerObject.name;
-					wrongText.GetComponent<Text> ().enabled = true;
-					cooldown = cooldownPeriod;
-					return;
+                    GameOver(GameOverReason.HIT_SNAKE);
+                    break;
 				}
 			}
 
@@ -121,32 +126,50 @@ public class GameManager : MonoBehaviour {
 				{
 					if(item.name == answerObject.name)
 					{
-						Debug.Log ("Correct");
 						scoreText.GetComponent<Text> ().text = "Score: " + (currentSnakeBodies.Count + 2 - initialSnakeSize);
 						AddToSnake ();
 						itemToRemove = item;
-						Destroy (item);
 					}
 					else
 					{
-						Debug.Log ("Wrong");
-						DestroySnake ();
-						wrongText.GetComponent<Text> ().text = "Incorrect!\nGame Over\nCorrect Answer: " + answerObject.name;
-						wrongText.GetComponent<Text> ().enabled = true;
-						cooldown = cooldownPeriod;
+                        GameOver(GameOverReason.INCORRECT_ANSWER);
+                        break;
 					}
 				}
 			}
 
 			if(itemToRemove != null)
 			{
-				spawnedItems.Remove(itemToRemove);
+                RemoveItem(itemToRemove);
 				PickSentence ();
 				SpawnItem ();
 				SpawnItem (answerObject);
 			}
 		}
 	}
+
+    void GameOver(GameOverReason reason)
+    {
+        switch(reason)
+        {
+            case GameOverReason.HIT_SNAKE:
+                gameOverText.GetComponent<Text>().text = "You ran into yourself!\n";
+                break;
+            case GameOverReason.HIT_WALL:
+                gameOverText.GetComponent<Text>().text = "You ran into the wall!\n";
+                break;
+            case GameOverReason.INCORRECT_ANSWER:
+                gameOverText.GetComponent<Text>().text = "Incorrect Answer!\n";
+                break;
+            default:
+                gameOverText.GetComponent<Text>().text = "Unknown Reason!\n";
+                break;
+        }
+        currentSnakeHead.GetComponent<SnakeHead>().cycling = false;
+        gameOverText.GetComponent<Text>().text += "Game Over\nCorrect Answer: " + answerObject.name + "\n\nPress Enter to Restart";
+        gameOverText.GetComponent<Text>().enabled = true;
+        gameOver = true;
+    }
 
 	void SpawnItem () {
 		int ran = Random.Range (0, 5);
@@ -217,7 +240,13 @@ public class GameManager : MonoBehaviour {
 		spawnedItems.Add(obj);
 	}
 
-	void PickSentence()
+    void RemoveItem (GameObject item)
+    {
+        spawnedItems.Remove(item);
+        Destroy(item);
+    }
+
+    void PickSentence()
 	{
 		int ran = Random.Range (0, 20);
 		string sentence;
