@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using System.IO;
+using System.Net;
 
 public class GameManager : MonoBehaviour {
 
@@ -45,6 +47,9 @@ public class GameManager : MonoBehaviour {
 	private bool gameOver;
     private bool gameStarting = false;
 
+    private string[] questions;
+    private GameObject[] answers;
+
 	// Use this for initialization
 	void Start () {
 		currentSnakeBodies = new List<GameObject> ();
@@ -53,7 +58,55 @@ public class GameManager : MonoBehaviour {
 		SpawnItem ();
 		PickSentence ();
 		SpawnItem (answerObject);
-	}
+
+        try
+        {
+            string dataURL = "";
+            if (Application.isEditor)
+            {
+                //dataURL = "C:\\Development\\GUM Snake\\questions.txt";
+                dataURL = "http://www.wec.tech/GumSnake/developmental/questions.html";
+            }
+            else
+            {
+                dataURL = "http://www.wec.tech/GumSnake/developmental/questions.html";
+            }
+            using (var client = new WebClient())
+            {
+                string result = client.DownloadString(dataURL);
+                string[] lines = result.Split(new string[] { "\r\n", "\n" }, System.StringSplitOptions.None);
+                int ran = Random.Range(0, lines.Length);
+                string questions = lines[ran].Split('|')[0];
+                string ansString = lines[ran].Split('|')[1];
+                switch (ansString)
+                {
+                    case "comma":
+                        ans = commaItem;
+                        break;
+                    case "period":
+                        ans = periodItem;
+                        break;
+                    case "semicolon":
+                        ans = semicolonItem;
+                        break;
+                    case "colon":
+                        ans = colonItem;
+                        break;
+                    case "blank":
+                        ans = blankItem;
+                        break;
+                    default:
+                        Debug.LogError("Line improperly formatted (questions.txt line " + (ran + 1) + ")");
+                        PickSentence();
+                        break;
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
 	
 	// Update is called once per frame
 	void Update () {
@@ -248,13 +301,16 @@ public class GameManager : MonoBehaviour {
 
     void PickSentence()
 	{
-		int ran = Random.Range (0, 20);
-		string sentence;
-		GameObject ans;
+        int ran = Random.Range(0, 20);
+        string sentence = "null sentence";
+		GameObject ans = null;
+
+        
 		/* 
 		sentence = "";
 		ans = gameObject;
 		*/
+        /*
 		switch(ran)
 		{
 		case 0:
@@ -342,7 +398,7 @@ public class GameManager : MonoBehaviour {
 			sentence = "I want to wear the red shirt _ for my favorite color is red.";
 			ans = commaItem;
 			break;
-		}
+		}*/
 
 		questionText.GetComponent<Text> ().text = sentence;
 		answerObject = ans;
